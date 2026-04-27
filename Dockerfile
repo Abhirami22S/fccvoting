@@ -17,4 +17,5 @@ COPY . .
 EXPOSE 3000
 
 # Command to run the application
-CMD ["node", "server.js"]
+# We use a shell to run the database initialization script before starting the server
+CMD ["sh", "-c", "node db/initDB.js && node server.js"]
