@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CloudVote</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="/" class="logo">CloudVote</a>
+        <div class="nav-links">
+            <span id="userNameDisplay" style="margin-right: 1rem; color: var(--text-muted);"></span>
+            <a href="results.html">Results</a>
+            <a href="#" onclick="logout(); return false;">Logout</a>
+        </div>
+    </nav>
+    <div class="container">
+        
+        <div id="alreadyVotedMessage" class="card text-center mb-4" style="background-color: rgba(46, 160, 67, 0.1); border-color: var(--success); display: none;">
+            <h2 style="color: var(--success);">Thank you for voting!</h2>
+            <p>Your vote has been securely recorded.</p>
+            <a href="results.html" class="btn btn-primary mt-4">View Live Results</a>
+        </div>
+
+        <div id="votingSection">
+            <h2 class="mb-4">Select your candidate</h2>
+            <div id="candidatesGrid" class="grid">
+                <!-- Candidates will be loaded here -->
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        if (!getToken()) window.location.href = 'login.html';
+        
+        const user = getUser();
+        if(user) {
+            document.getElementById('userNameDisplay').innerText = `Welcome, ${user.name}`;
+            if(user.has_voted) {
+                document.getElementById('votingSection').style.display = 'none';
+                document.getElementById('alreadyVotedMessage').style.display = 'block';
+            }
+        }
+
+        async function loadCandidates() {
+            if(user && user.has_voted) return;
+
+            try {
+                const candidates = await fetchAPI('/votes/candidates');
+                const grid = document.getElementById('candidatesGrid');
+                grid.innerHTML = '';
+
+                candidates.forEach(candidate => {
+                    const el = document.createElement('div');
+                    el.className = 'card candidate-card';
+                    el.innerHTML = `
+                        <div class="candidate-name">${candidate.name}</div>
+                        <div class="candidate-party">${candidate.party}</div>
+                        <button class="btn btn-primary btn-block" onclick="castVote(${candidate.candidate_id}, '${candidate.name}')">VOTE</button>
+                    `;
+                    grid.appendChild(el);
+                });
+
+                if(candidates.length === 0) {
+                    grid.innerHTML = '<p>No candidates available at the moment.</p>';
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function castVote(candidateId, candidateName) {
+            if(!confirm(`Are you sure you want to vote for ${candidateName}? This action cannot be undone.`)) return;
+
+            try {
+                await fetchAPI('/votes/cast', {
+                    method: 'POST',
+                    body: JSON.stringify({ candidateId })
+                });
+
+                showToast('Vote successfully cast!', 'success');
+                
+                // Update local user state
+                const user = getUser();
+                user.has_voted = 1;
+                localStorage.setItem('user', JSON.stringify(user));
+
+                // Update UI
+                document.getElementById('votingSection').style.display = 'none';
+                document.getElementById('alreadyVotedMessage').style.display = 'block';
+
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        loadCandidates();
+    </script>
+</body>
+</html>
