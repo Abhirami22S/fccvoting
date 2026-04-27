@@ -4,5 +4,3 @@ npm-debug.log
 .git
 .gitignore
 *.md
-db/schema.sql
-db/initDB.js
